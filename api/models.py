@@ -6,7 +6,6 @@ from django.utils import timezone
 from django.contrib.auth.models import User, auth
 import uuid
 from django.core.validators import RegexValidator
-import cv2
 from django.conf import settings
 from api.mini_func import *
 import os
