@@ -1,5 +1,7 @@
+asgiref==3.4.1
 Django==3.0.8
-django-crispy-forms==1.9.1
-djangorestframework==3.11.0
-Pillow==7.1.2
-opencv-python
+django-crispy-forms==1.13.0
+djangorestframework==3.13.1
+Pillow==8.4.0
+requests==2.27.1
+urllib3==1.26.8
