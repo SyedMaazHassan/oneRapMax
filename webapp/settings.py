@@ -157,8 +157,3 @@ EMAIL_HOST_PASSWORD = '*******'
 
 
 CRISPY_TEMPLATE_PACK = 'bootstrap'
-
-STRIPE = {
-    'publishableKey': 'pk_test_neFiWZmP73t6MxcbqrATir3y00YX32CRnz',
-    'secretKey': 'sk_test_WCeo5nOzdhn1NkjLAD04cJ3C00mfgaRExc'
-}
