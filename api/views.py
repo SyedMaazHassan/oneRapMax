@@ -275,6 +275,42 @@ class CategoryApi(APIView, ApiResponse):
         return Response(self.output_object)
 
 
+class MuscleApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get_all_muscles(self):
+        all_muscles = Muscle.objects.all()
+        all_muscles_sd = MuscleSerializer(all_muscles, many=True)
+        return all_muscles_sd.data
+
+    def get_exercises_by_muscle(self, muscle):
+        all_exercises = muscle.exercise_set.all()
+        return ExerciseSerializer(all_exercises, many=True).data
+
+    def get_single_muscle(self, muscle):
+        single_muscle_sd = MuscleSerializer(muscle, many=False)
+        return single_muscle_sd.data
+
+    def get(self, request, id=None):
+        try:
+            output_dict = None
+            if id:
+                muscle = get_object_or_404(Muscle, id=id)
+                output_dict = {
+                    'muscle': self.get_single_muscle(muscle),
+                    'exercises': self.get_exercises_by_muscle(muscle)
+                }
+            else:
+                output_dict = {'muscle': self.get_all_muscles()}
+            self.postSuccess(output_dict, "Muscle fetched successfully")
+        except Exception as e:
+            self.postError({'uid': str(e)})
+        return Response(self.output_object)
+
+
 class UserApi(APIView, ApiResponse):
     authentication_classes = [RequestAuthentication]
 
@@ -284,8 +320,6 @@ class UserApi(APIView, ApiResponse):
     def post(self, request, uid=None):
         try:
             data = request.data.copy()
-            stripe_cust_id = self.create_stripe_user(data)
-            data['stripe_cust_id'] = stripe_cust_id
             data['uid'] = uid
             serializer = UserSerializer(data=data)
             if serializer.is_valid():
@@ -294,7 +328,6 @@ class UserApi(APIView, ApiResponse):
                 self.postSuccess({'user': serializer.data},
                                  "User added successfully")
             else:
-                self.delete_stripe_user(stripe_cust_id)
                 self.postError(beautify_errors(serializer.errors))
         except Exception as e:
             self.postError({'uid': str(e)})

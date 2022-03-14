@@ -20,6 +20,11 @@ urlpatterns = [
     path('user/<uid>/add', UserApi.as_view()),
     path('user/<uid>/update', UserApi.as_view()),
 
+    path('user/<uid>/update', UserApi.as_view()),
+
+    # Muscles
+    path('muscles', MuscleApi.as_view()),
+    path('muscles/<id>', MuscleApi.as_view()),
 
     # path('categories', CategoryApi.as_view()),
     # path('category/', CategoryApi.as_view()),

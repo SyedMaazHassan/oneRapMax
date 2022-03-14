@@ -18,132 +18,143 @@ and validate them properly
 ###   FOR Mission Details API         START           #####
 ###########################################################
 
-class CourseVeryShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Course
-        fields = ['course_id', 'name']
+# class CourseVeryShortSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Course
+#         fields = ['course_id', 'name']
 
 
-class LevelVeryShortSerializer(serializers.ModelSerializer):
-    course = CourseVeryShortSerializer(many=False, read_only=True)
+# class LevelVeryShortSerializer(serializers.ModelSerializer):
+#     course = CourseVeryShortSerializer(many=False, read_only=True)
 
-    class Meta:
-        model = Level
-        fields = ['level_id', 'name', 'course']
-
-
-class VideoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Video
-        exclude = ['video_id', 'created_at']
+#     class Meta:
+#         model = Level
+#         fields = ['level_id', 'name', 'course']
 
 
-class MissionDetailSerializer(serializers.ModelSerializer):
-    level = LevelVeryShortSerializer(many=False, read_only=True)
-    video = VideoSerializer(many=False, read_only=True)
-
-    class Meta:
-        model = Mission
-        fields = '__all__'
-
-###########################################################
-###   FOR Mission Details API         END             #####
-###########################################################
+# class VideoSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Video
+#         exclude = ['video_id', 'created_at']
 
 
-###########################################################
-###   FOR Level Details API           START           #####
-###########################################################
+# class MissionDetailSerializer(serializers.ModelSerializer):
+#     level = LevelVeryShortSerializer(many=False, read_only=True)
+#     video = VideoSerializer(many=False, read_only=True)
 
-class MissionShortSerializer(serializers.ModelSerializer):
-    duration = serializers.CharField(max_length=20)
+#     class Meta:
+#         model = Mission
+#         fields = '__all__'
 
-    class Meta:
-        model = Mission
-        fields = '__all__'
-
-
-class LevelDetailSerializer(serializers.ModelSerializer):
-    missions = MissionShortSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Level
-        fields = '__all__'
-
-###########################################################
-###   FOR Level Details API           END             #####
-###########################################################
+# ###########################################################
+# ###   FOR Mission Details API         END             #####
+# ###########################################################
 
 
-###########################################################
-###   FOR Category Details API        START           #####
-###########################################################
+# ###########################################################
+# ###   FOR Level Details API           START           #####
+# ###########################################################
 
-class LevelShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Level
-        # fields = '__all__'
-        exclude = ['course']
+# class MissionShortSerializer(serializers.ModelSerializer):
+#     duration = serializers.CharField(max_length=20)
 
-
-class CourseSerializer(serializers.ModelSerializer):
-    levels = LevelShortSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Course
-        # fields = '__all__'
-        exclude = ["category"]
+#     class Meta:
+#         model = Mission
+#         fields = '__all__'
 
 
-class CategoryDetailedSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = "__all__"
+# class LevelDetailSerializer(serializers.ModelSerializer):
+#     missions = MissionShortSerializer(many=True, read_only=True)
+
+#     class Meta:
+#         model = Level
+#         fields = '__all__'
+
+# ###########################################################
+# ###   FOR Level Details API           END             #####
+# ###########################################################
 
 
-###########################################################
-###   FOR Category Details API        END             #####
-###########################################################
+# ###########################################################
+# ###   FOR Category Details API        START           #####
+# ###########################################################
+
+# class LevelShortSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Level
+#         # fields = '__all__'
+#         exclude = ['course']
 
 
-class CategoryShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = "__all__"
+# class CourseSerializer(serializers.ModelSerializer):
+#     levels = LevelShortSerializer(many=True, read_only=True)
+
+#     class Meta:
+#         model = Course
+#         # fields = '__all__'
+#         exclude = ["category"]
 
 
-###########################################################
-###   FOR Subscription Details API    START           #####
-###########################################################
+# class CategoryDetailedSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Category
+#         fields = "__all__"
 
 
-class TrialSerializer(serializers.ModelSerializer):
-    end_at = serializers.DateTimeField()
-
-    class Meta:
-        model = Trial
-        fields = "__all__"
+# ###########################################################
+# ###   FOR Category Details API        END             #####
+# ###########################################################
 
 
-class CurrencySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Currency
-        fields = "__all__"
+# class CategoryShortSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Category
+#         fields = "__all__"
 
 
-class SubscriptionSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(many=False, read_only=True)
-    sales_tax_price = serializers.FloatField()
-    total_price = serializers.FloatField()
+# ###########################################################
+# ###   FOR Subscription Details API    START           #####
+# ###########################################################
 
-    class Meta:
-        model = Subscription
-        fields = "__all__"
+
+# class TrialSerializer(serializers.ModelSerializer):
+#     end_at = serializers.DateTimeField()
+
+#     class Meta:
+#         model = Trial
+#         fields = "__all__"
+
+
+# class CurrencySerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Currency
+#         fields = "__all__"
+
+
+# class SubscriptionSerializer(serializers.ModelSerializer):
+#     currency = CurrencySerializer(many=False, read_only=True)
+#     sales_tax_price = serializers.FloatField()
+#     total_price = serializers.FloatField()
+
+#     class Meta:
+#         model = Subscription
+#         fields = "__all__"
 
 
 ###########################################################
 ###   FOR Subscription Details API    END             #####
 ###########################################################
+
+class MuscleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Muscle
+        exclude = ("created_at",)
+
+
+class ExerciseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Exercise
+        exclude = ("created_at",)
 
 
 class UserSerializer(serializers.ModelSerializer):
