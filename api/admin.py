@@ -5,4 +5,5 @@ from api.models import *
 admin.site.register(SystemUser)
 admin.site.register(Muscle)
 admin.site.register(Exercise)
+admin.site.register(Entry)
 admin.site.register(API_Key)

@@ -69,6 +69,51 @@ class Exercise(CommonObject):
     muscle = models.ForeignKey(Muscle, on_delete=models.CASCADE)
 
 
+class Entry(models.Model):
+    values = models.TextField()
+    dates = models.TextField()
+    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    max_value = models.FloatField(default=0)
+    max_value_date = models.DateField(blank=True, null=True)
+
+    def __str__(self):
+        return f'{self.exercise} - {self.user} - ({self.max_value}, {self.max_value_date})'
+
+    def add_now(self, value, date):
+        if self.values and self.dates:
+            values = json.loads(self.values)
+            dates = json.loads(self.dates)
+            if date in dates:
+                for i in range(len(dates)):
+                    if dates[i] == date and value > values[i]:
+                        values[i] = value
+            else:
+                values.append(value)
+                dates.append(date)
+            self.set_max_value(values, dates)
+            self.values = json.dumps(values)
+            self.dates = json.dumps(dates)
+        else:
+            self.values = json.dumps([value])
+            self.dates = json.dumps([date])
+            self.max_value = value
+            self.max_value_date = date
+
+    def set_max_value(self, values, dates):
+        max_val = values[0]
+        max_value_index = 0
+        for i in range(1, len(values)):
+            if values[i] > max_val:
+                max_val = values[i]
+                max_value_index = i
+        self.max_value = max_val
+        self.max_value_date = dates[max_value_index]
+
+    class Meta:
+        ordering = ("-max_value",)
+
+
 class API_Key(models.Model):
     key = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
 

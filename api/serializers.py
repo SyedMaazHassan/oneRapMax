@@ -154,7 +154,25 @@ class MuscleSerializer(serializers.ModelSerializer):
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
-        exclude = ("created_at",)
+        exclude = ("created_at", "muscle")
+
+
+class LeaderBoardSerializer(serializers.ModelSerializer):
+    # def __init__(self, user, *args, **kwargs):
+    #     super(LeaderBoardSerializer, self).__init__(*args, **kwargs)
+    #     self.user = user
+
+    is_mine = serializers.SerializerMethodField(method_name='get_is_mine')
+    score = serializers.FloatField(source='max_value')
+    date = serializers.DateField(source='max_value_date')
+
+    def get_is_mine(self, instance):
+        return self.context['user'].uid == instance.user.uid
+
+    class Meta:
+        model = Entry
+        exclude = ("values", "dates", "exercise",
+                   "user", "max_value", "max_value_date")
 
 
 class UserSerializer(serializers.ModelSerializer):

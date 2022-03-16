@@ -275,6 +275,115 @@ class CategoryApi(APIView, ApiResponse):
         return Response(self.output_object)
 
 
+def get_objs(muscle_id, exercise_id):
+    muscle = get_object_or_404(Muscle, id=muscle_id)
+    exercise = Exercise.objects.get(id=exercise_id, muscle=muscle)
+    return {
+        'muscle': muscle,
+        'exercise': exercise
+    }
+
+
+class LeaderBoard(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request, muscle_id, exercise_id):
+        try:
+            output = {}
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            objs = get_objs(muscle_id, exercise_id)
+            group_id = request.data.get("group_id")
+            if not group_id:
+                all_entries = Entry.objects.filter(exercise=objs['exercise'])
+                serialized_entries = LeaderBoardSerializer(
+                    all_entries, many=True, context={'user': user})
+                output['leaderboard'] = serialized_entries.data
+            self.postSuccess(output, "Exercise fetched successfully")
+        except Exception as e:
+            self.postError({'exercise': str(e)})
+        return Response(self.output_object)
+
+
+class ExerciseApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get_serialized_version(self, user, muscle, exercise):
+        serialized_muscle = MuscleSerializer(muscle, many=False)
+        serialized_exercise = ExerciseSerializer(exercise, many=False)
+        entry = Entry.objects.filter(user=user, exercise=exercise).first()
+        if entry:
+            dates = json.loads(entry.dates)
+            values = json.loads(entry.values)
+        else:
+            dates = values = []
+
+        return {
+            'exercise': serialized_exercise.data,
+            'muscle': serialized_muscle.data,
+            'dates': dates,
+            'values': values
+        }
+
+    def get_response(self, user, muscle_id, exercise_id):
+        output = get_objs(muscle_id, exercise_id)
+        output['response_output'] = self.get_serialized_version(
+            user, output['muscle'], output['exercise'])
+        return output
+
+    def calculate_onerap_max(self, weight, reps):
+        oneRapMax = weight * (36 / (37 - reps))
+        oneRapMax = "{:.5f}".format(oneRapMax)
+        return float(oneRapMax)
+
+    def post(self, request, muscle_id, exercise_id):
+        try:
+            objs = get_objs(muscle_id, exercise_id)
+            reps = request.data.get('reps')
+            print(reps)
+            if reps and reps.isdigit() and int(reps) > 0 and int(reps) < 37:
+                reps = int(reps)
+                user = SystemUser.objects.get(uid=request.headers['uid'])
+                muscel = objs['muscle']
+                exercise = objs['exercise']
+
+                entry = Entry.objects.filter(
+                    user=user, exercise=exercise).first()
+                date = datetime.now().strftime("%Y-%m-%d")
+                one_rap_max = self.calculate_onerap_max(user.weight, reps)
+                if not entry:
+                    entry = Entry(user=user, exercise=exercise)
+                entry.add_now(one_rap_max, date)
+                entry.save()
+                print(entry.values, entry.dates)
+                serialized_version = self.get_serialized_version(
+                    user, objs['muscle'], objs['exercise'])
+                self.postSuccess(serialized_version,
+                                 "New one rap max has been submitted successfully")
+            else:
+                self.postError({
+                    'one rap max': 'Provide valid value of no. of "reps"'
+                })
+        except Exception as e:
+            self.postError({'one rap max': str(e)})
+        return Response(self.output_object)
+
+    def get(self, request, muscle_id, exercise_id):
+        try:
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            output = self.get_response(user, muscle_id, exercise_id)
+            self.postSuccess(output['response_output'],
+                             "Exercise fetched successfully")
+        except Exception as e:
+            self.postError({'exercise': str(e)})
+        return Response(self.output_object)
+
+
 class MuscleApi(APIView, ApiResponse):
     authentication_classes = [RequestAuthentication]
 
@@ -294,11 +403,11 @@ class MuscleApi(APIView, ApiResponse):
         single_muscle_sd = MuscleSerializer(muscle, many=False)
         return single_muscle_sd.data
 
-    def get(self, request, id=None):
+    def get(self, request, muscle_id=None):
         try:
             output_dict = None
-            if id:
-                muscle = get_object_or_404(Muscle, id=id)
+            if muscle_id:
+                muscle = get_object_or_404(Muscle, id=muscle_id)
                 output_dict = {
                     'muscle': self.get_single_muscle(muscle),
                     'exercises': self.get_exercises_by_muscle(muscle)
@@ -307,7 +416,7 @@ class MuscleApi(APIView, ApiResponse):
                 output_dict = {'muscle': self.get_all_muscles()}
             self.postSuccess(output_dict, "Muscle fetched successfully")
         except Exception as e:
-            self.postError({'uid': str(e)})
+            self.postError({'muscle': str(e)})
         return Response(self.output_object)
 
 

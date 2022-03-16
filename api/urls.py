@@ -24,7 +24,12 @@ urlpatterns = [
 
     # Muscles
     path('muscles', MuscleApi.as_view()),
-    path('muscles/<id>', MuscleApi.as_view()),
+    path('muscles/<muscle_id>', MuscleApi.as_view()),
+
+    path('muscles/<muscle_id>/exercise/<exercise_id>', ExerciseApi.as_view()),
+
+    path('muscles/<muscle_id>/exercise/<exercise_id>/leaderboard',
+         LeaderBoard.as_view()),
 
     # path('categories', CategoryApi.as_view()),
     # path('category/', CategoryApi.as_view()),
