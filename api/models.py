@@ -96,6 +96,7 @@ class Group(models.Model):
     class Meta:
         verbose_name = "Group"
         verbose_name_plural = "Groups"
+        ordering = ("-created_at",)
 
     def __str__(self):
         return self.name

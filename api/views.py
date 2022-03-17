@@ -324,18 +324,30 @@ class GroupApi(APIView, ApiResponse):
             self.postError({'Group': str(e)})
         return Response(self.output_object)
 
+    def is_group_exists(self, user, name):
+        all_groups = Group.objects.filter(created_by=user, name__exact=name)
+        return all_groups.exists()
+
     def post(self, request):
         try:
             name = request.data.get('name')
             members = request.data.get('members')
             user = SystemUser.objects.get(uid=request.headers['uid'])
             if name and members:
-                new_group = Group(name=name, created_by=user)
-                new_group.save()
-                new_group.add_members(members)
-                new_group.add_admin()
-                output = {}
-                self.postSuccess(output, 'Group has been created successfully')
+                if not self.is_group_exists(user, name):
+                    new_group = Group(name=name, created_by=user)
+                    new_group.save()
+                    new_group.add_members(members)
+                    new_group.add_admin()
+                    group_serialized = GroupSerializer(new_group)
+                    output = {
+                        'group': group_serialized.data
+                    }
+                    self.postSuccess(
+                        output, 'Group has been created successfully')
+                else:
+                    self.postError(
+                        {'Group': 'Group with this name already exists'})
             else:
                 self.postError(
                     {'Group': 'Please add valid info. to create group'})
