@@ -69,6 +69,41 @@ class Exercise(CommonObject):
     muscle = models.ForeignKey(Muscle, on_delete=models.CASCADE)
 
 
+class Group(models.Model):
+    icon = models.CharField(
+        default='media/avatars/default-profile.png', max_length=150)
+    name = models.CharField(max_length=50)
+    members = models.ManyToManyField("api.SystemUser")
+    created_by = models.ForeignKey(
+        "api.SystemUser", on_delete=models.CASCADE, related_name="created_by", null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def get_total_members(self):
+        return self.members.count()
+
+    def add_admin(self):
+        self.members.add(self.created_by)
+
+    def add_single_member(self, user):
+        self.members.add(user)
+
+    def add_members(self, member_list):
+        for member in member_list:
+            member_obj = SystemUser.objects.filter(uid=member).first()
+            if member_obj:
+                self.add_single_member(member_obj)
+
+    class Meta:
+        verbose_name = "Group"
+        verbose_name_plural = "Groups"
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("Group_detail", kwargs={"pk": self.pk})
+
+
 class Entry(models.Model):
     values = models.TextField()
     dates = models.TextField()

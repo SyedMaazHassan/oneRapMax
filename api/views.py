@@ -307,6 +307,43 @@ class LeaderBoard(APIView, ApiResponse):
         return Response(self.output_object)
 
 
+class GroupApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request):
+        try:
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            groups = Group.objects.filter(created_by=user)
+            groups_serialized = GroupSerializer(groups, many=True)
+            self.postSuccess({'groups': groups_serialized.data},
+                             'Groups fetched created successfully')
+        except Exception as e:
+            self.postError({'Group': str(e)})
+        return Response(self.output_object)
+
+    def post(self, request):
+        try:
+            name = request.data.get('name')
+            members = request.data.get('members')
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            if name and members:
+                new_group = Group(name=name, created_by=user)
+                new_group.save()
+                new_group.add_members(members)
+                new_group.add_admin()
+                output = {}
+                self.postSuccess(output, 'Group has been created successfully')
+            else:
+                self.postError(
+                    {'Group': 'Please add valid info. to create group'})
+        except Exception as e:
+            self.postError({'Group': str(e)})
+        return Response(self.output_object)
+
+
 class ExerciseApi(APIView, ApiResponse):
     authentication_classes = [RequestAuthentication]
 
@@ -346,7 +383,7 @@ class ExerciseApi(APIView, ApiResponse):
             objs = get_objs(muscle_id, exercise_id)
             reps = request.data.get('reps')
             print(reps)
-            if reps and reps.isdigit() and int(reps) > 0 and int(reps) < 37:
+            if reps and str(reps).isdigit() and int(reps) > 0 and int(reps) < 37:
                 reps = int(reps)
                 user = SystemUser.objects.get(uid=request.headers['uid'])
                 muscel = objs['muscle']
@@ -417,6 +454,23 @@ class MuscleApi(APIView, ApiResponse):
             self.postSuccess(output_dict, "Muscle fetched successfully")
         except Exception as e:
             self.postError({'muscle': str(e)})
+        return Response(self.output_object)
+
+
+class AllUserApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request, uid=None):
+        try:
+            all_users = SystemUser.objects.exclude(uid=request.headers['uid'])
+            all_users_serialized = UserMiniSerializer(all_users, many=True)
+            self.postSuccess({'users': all_users_serialized.data},
+                             "Users fetched successfully")
+        except Exception as e:
+            self.postError({'Users': str(e)})
         return Response(self.output_object)
 
 

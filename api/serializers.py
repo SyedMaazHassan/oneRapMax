@@ -175,6 +175,20 @@ class LeaderBoardSerializer(serializers.ModelSerializer):
                    "user", "max_value", "max_value_date")
 
 
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemUser
+        fields = ["uid", "first_name", "last_name", "avatar",  "created_at"]
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    total_members = serializers.IntegerField(source='get_total_members')
+
+    class Meta:
+        model = Group
+        exclude = ("created_by", "members")
+
+
 class UserSerializer(serializers.ModelSerializer):
 
     def validate(self, data):

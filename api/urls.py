@@ -14,7 +14,7 @@ urlpatterns = [
     # GET API
     path('', views.index, name="index"),
 
-    path('user/', UserApi.as_view()),
+    path('user', AllUserApi.as_view()),
     path('user/<uid>', UserApi.as_view()),
 
     path('user/<uid>/add', UserApi.as_view()),
@@ -30,6 +30,9 @@ urlpatterns = [
 
     path('muscles/<muscle_id>/exercise/<exercise_id>/leaderboard',
          LeaderBoard.as_view()),
+
+    path('group/create', GroupApi.as_view()),
+    path('group', GroupApi.as_view()),
 
     # path('categories', CategoryApi.as_view()),
     # path('category/', CategoryApi.as_view()),
