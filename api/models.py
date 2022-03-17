@@ -10,7 +10,7 @@ from django.conf import settings
 from api.mini_func import *
 import os
 import json
-
+from random import choice
 # Create your models here.
 
 # python manage.py makemigrations
@@ -32,11 +32,11 @@ class SystemUser(models.Model):
                               ('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
     height = models.FloatField(null=True, blank=True)
     weight = models.FloatField(null=True, blank=True)
-    is_profile_completed = models.BooleanField(default=True)
+    is_profile_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"{self.first_name} - {self.uid}"
+        return f"{self.first_name} - {self.uid} - {self.is_profile_completed} - ({self.gender}, {self.weight}, {self.height})"
 
     def save(self, *args, **kwargs):
         # figure out warranty end date
@@ -68,10 +68,13 @@ class Muscle(CommonObject):
 class Exercise(CommonObject):
     muscle = models.ForeignKey(Muscle, on_delete=models.CASCADE)
 
+    def get_muscle_name(self):
+        return self.muscle.name
+
 
 class Group(models.Model):
     icon = models.CharField(
-        default='media/avatars/default-profile.png', max_length=150)
+        default='/media/avatars/default-profile.png', max_length=150)
     name = models.CharField(max_length=50)
     members = models.ManyToManyField("api.SystemUser")
     created_by = models.ForeignKey(
@@ -92,6 +95,14 @@ class Group(models.Model):
             member_obj = SystemUser.objects.filter(uid=member).first()
             if member_obj:
                 self.add_single_member(member_obj)
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            icon_list = [
+                '1.jpg', '2.png', '3.png', '4.jpg', '5.jpg', '7.jpg', '8.jpg', '9.jpg', '10.jpg'
+            ]
+            self.icon = '/media/groups/' + choice(icon_list)
+        super(Group, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Group"

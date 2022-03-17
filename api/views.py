@@ -13,7 +13,7 @@ from api.authentication import RequestAuthentication, ApiResponse
 from api.support import beautify_errors
 import copy
 import json
-
+from random import choice
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -22,6 +22,43 @@ import json
 
 
 def index(request):
+
+    # users = SystemUser.objects.all()
+    # all_exercises = Exercise.objects.all()
+    # numbers = list(range(105, 201))
+    # for user in users:
+    #     print("---------------------")
+    #     print("USER STARTED", user)
+    #     print("---------------------")
+    #     for exercise in all_exercises:
+    #         print(f"========= EXERCISE STARTED - {exercise} ========")
+    #         values = [106]
+    #         dates = ['2022-03-2']
+    #         max_value = 106
+    #         max_value_date = '2022-03-2'
+    #         for i in range(2, 15):
+    #             val = choice(numbers)
+    #             date = f'2022-03-{i}'
+    #             if val > max(values):
+    #                 max_value = val
+    #                 max_value_date = date
+    #             values.append(val)
+    #             dates.append(date)
+    #         new_entry = Entry(
+    #             values=json.dumps(values),
+    #             dates=json.dumps(dates),
+    #             user=user,
+    #             exercise=exercise,
+    #             max_value=max_value,
+    #             max_value_date=max_value_date
+    #         )
+    #         new_entry.save()
+    #         print(values, dates)
+    #         print("========= EXERCISE STARTED ========")
+    #     print("---------------------")
+    #     print("USER ENDED", user)
+    #     print("---------------------")
+
     # all_categories = Category.objects.all()
 
     # for category in all_categories:
@@ -290,20 +327,33 @@ class LeaderBoard(APIView, ApiResponse):
     def __init__(self):
         ApiResponse.__init__(self)
 
-    def get(self, request, muscle_id, exercise_id):
+    def get(self, request):
         try:
             output = {}
             user = SystemUser.objects.get(uid=request.headers['uid'])
-            objs = get_objs(muscle_id, exercise_id)
-            group_id = request.data.get("group_id")
-            if not group_id:
-                all_entries = Entry.objects.filter(exercise=objs['exercise'])
-                serialized_entries = LeaderBoardSerializer(
-                    all_entries, many=True, context={'user': user})
-                output['leaderboard'] = serialized_entries.data
-            self.postSuccess(output, "Exercise fetched successfully")
+            exercise_id = request.data.get('exercise_id')
+            group_id = request.data.get('group_id')
+            if not exercise_id:
+                raise Exception("Please select the exercise")
+            exercise = Exercise.objects.get(id=exercise_id)
+            all_entries = Entry.objects.filter(exercise=exercise)
+
+            if group_id:
+                group = Group.objects.filter(
+                    created_by=user, id=group_id).first()
+                if group:
+                    all_entries = all_entries.filter(
+                        user__in=group.members.all())
+                else:
+                    raise Exception(
+                        "Group doesn't exist or you don't have access fetch this data")
+
+            serialized_entries = LeaderBoardSerializer(
+                all_entries, many=True, context={'user': user})
+            output['leaderboard'] = serialized_entries.data
+            self.postSuccess(output, "Leaderboard data fetched successfully")
         except Exception as e:
-            self.postError({'exercise': str(e)})
+            self.postError({'error': str(e)})
         return Response(self.output_object)
 
 
@@ -327,6 +377,19 @@ class GroupApi(APIView, ApiResponse):
     def is_group_exists(self, user, name):
         all_groups = Group.objects.filter(created_by=user, name__exact=name)
         return all_groups.exists()
+
+    def delete(self, request, id):
+        try:
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            group = Group.objects.filter(created_by=user, id=id).first()
+            if not group:
+                raise Exception(
+                    "Group doesn't exist or you don't have access to delete it")
+            group.delete()
+            self.postSuccess({}, 'Group has been deleted successfully')
+        except Exception as e:
+            self.postError({'Group': str(e)})
+        return Response(self.output_object)
 
     def post(self, request):
         try:
@@ -353,6 +416,25 @@ class GroupApi(APIView, ApiResponse):
                     {'Group': 'Please add valid info. to create group'})
         except Exception as e:
             self.postError({'Group': str(e)})
+        return Response(self.output_object)
+
+
+class AllExerciseApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request):
+        try:
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            all_exercises = Exercise.objects.all()
+            all_exercises_serialized = ExerciseToMuscle(
+                all_exercises, many=True)
+            self.postSuccess({'exercises': all_exercises_serialized.data},
+                             'Exercises fetched created successfully')
+        except Exception as e:
+            self.postError({'Exercises': str(e)})
         return Response(self.output_object)
 
 

@@ -151,17 +151,31 @@ class MuscleSerializer(serializers.ModelSerializer):
         exclude = ("created_at",)
 
 
+class ExerciseToMuscle(serializers.ModelSerializer):
+    muscle_name = serializers.CharField(source='get_muscle_name')
+
+    class Meta:
+        model = Exercise
+        fields = "__all__"
+
+
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         exclude = ("created_at", "muscle")
 
 
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemUser
+        fields = ["uid", "first_name", "last_name", "avatar",  "created_at"]
+
+
 class LeaderBoardSerializer(serializers.ModelSerializer):
     # def __init__(self, user, *args, **kwargs):
     #     super(LeaderBoardSerializer, self).__init__(*args, **kwargs)
     #     self.user = user
-
+    user = UserMiniSerializer(many=False, read_only=True)
     is_mine = serializers.SerializerMethodField(method_name='get_is_mine')
     score = serializers.FloatField(source='max_value')
     date = serializers.DateField(source='max_value_date')
@@ -172,13 +186,7 @@ class LeaderBoardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Entry
         exclude = ("values", "dates", "exercise",
-                   "user", "max_value", "max_value_date")
-
-
-class UserMiniSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SystemUser
-        fields = ["uid", "first_name", "last_name", "avatar",  "created_at"]
+                   "max_value", "max_value_date")
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -196,6 +204,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         if 'phone' in data:
             phone = data['phone']
+            phone = phone.replace("-", "")
             if not (phone.isnumeric() and (9 < len(phone) < 15)):
                 errors['phone'] = 'Enter a valid phone number'
 

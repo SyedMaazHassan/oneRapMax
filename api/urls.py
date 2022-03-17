@@ -12,7 +12,6 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('', views.index, name="index"),
     # GET API
-    path('', views.index, name="index"),
 
     path('user', AllUserApi.as_view()),
     path('user/<uid>', UserApi.as_view()),
@@ -27,11 +26,13 @@ urlpatterns = [
     path('muscles/<muscle_id>', MuscleApi.as_view()),
 
     path('muscles/<muscle_id>/exercise/<exercise_id>', ExerciseApi.as_view()),
+    path('exercise', AllExerciseApi.as_view()),
 
-    path('muscles/<muscle_id>/exercise/<exercise_id>/leaderboard',
+    path('leaderboard',
          LeaderBoard.as_view()),
 
     path('group/create', GroupApi.as_view()),
+    path('group/<id>/delete', GroupApi.as_view()),
     path('group', GroupApi.as_view()),
 
     # path('categories', CategoryApi.as_view()),
