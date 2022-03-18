@@ -23,6 +23,14 @@ from random import choice
 
 def index(request):
 
+    # Completely random avatar
+
+    # Completely random avatar except for the hat
+    # More attributes can stay fixed
+
+    for user in SystemUser.objects.all():
+        user.save()
+
     # users = SystemUser.objects.all()
     # all_exercises = Exercise.objects.all()
     # numbers = list(range(105, 201))

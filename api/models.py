@@ -12,6 +12,7 @@ import os
 import json
 from random import choice
 # Create your models here.
+import python_avatars as pa
 
 # python manage.py makemigrations
 # python manage.py migrate
@@ -22,8 +23,8 @@ from random import choice
 
 class SystemUser(models.Model):
     uid = models.CharField(unique=True, max_length=255)
-    avatar = models.ImageField(
-        upload_to="avatars", null=True, blank=True, default='avatars/default-profile.png')
+    avatar = models.CharField(
+        max_length=255, null=True, blank=True, default='avatars/default-profile.png')
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
@@ -38,8 +39,38 @@ class SystemUser(models.Model):
     def __str__(self):
         return f"{self.first_name} - {self.uid} - {self.is_profile_completed} - ({self.gender}, {self.weight}, {self.height})"
 
+    def random_string_generator(self, str_size, allowed_chars):
+        import random
+        return ''.join(random.choice(allowed_chars) for x in range(str_size))
+
+    def add_avatar(self):
+        import string
+        chars = "ABCDEFG0123456789HIJKLMNOPQRSTU0123456789VWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        size = 12
+        name = self.random_string_generator(size, chars)
+        random_avatar = pa.Avatar(
+            style=pa.AvatarStyle.CIRCLE,
+            hair_color=pa.HairColor.pick_random(),
+            # top=pa.HairType.,
+            background_color=pa.BackgroundColor.pick_random(),
+            eyebrows=pa.EyebrowType.pick_random(),
+            mouth=pa.MouthType.SMILE,
+            eyes=pa.EyeType.DEFAULT,
+            top=pa.HairType.pick_random(),
+            nose=pa.NoseType.pick_random(),
+            accessory=pa.AccessoryType.NONE,
+            clothing=pa.ClothingType.HOODIE,
+            clothing_color=pa.ClothingColor.pick_random()
+        )
+        file_name = "media/" + name + ".svg"
+        self.avatar = "/" + file_name
+        random_avatar.render(file_name)
+
     def save(self, *args, **kwargs):
         # figure out warranty end date
+        if not self.pk:
+            self.add_avatar()
+
         if self.height and self.weight and self.gender:
             self.is_profile_completed = True
         super(SystemUser, self).save(*args, **kwargs)
