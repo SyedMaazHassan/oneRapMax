@@ -45,6 +45,7 @@ class SystemUser(models.Model):
 
     def add_avatar(self):
         import string
+        from django.conf import settings
         chars = "ABCDEFG0123456789HIJKLMNOPQRSTU0123456789VWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         size = 12
         name = self.random_string_generator(size, chars)
@@ -62,9 +63,12 @@ class SystemUser(models.Model):
             clothing=pa.ClothingType.HOODIE,
             clothing_color=pa.ClothingColor.pick_random()
         )
-        file_name = "media/" + name + ".svg"
-        self.avatar = "/" + file_name
-        random_avatar.render(file_name)
+        file_name_temp = name + ".svg"
+        file_path = os.path.join(
+            settings.BASE_DIR, "media", "avatars", file_name_temp)
+        # file_name = "media/" + name + ".svg"
+        random_avatar.render(file_path)
+        self.avatar = "/media/avatars/" + file_name_temp
 
     def save(self, *args, **kwargs):
         # figure out warranty end date
