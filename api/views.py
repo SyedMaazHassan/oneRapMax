@@ -338,9 +338,9 @@ class LeaderBoard(APIView, ApiResponse):
     def get(self, request):
         try:
             output = {}
+            exercise_id = request.query_params.get("exercise_id")
+            group_id = request.query_params.get("group_id")
             user = SystemUser.objects.get(uid=request.headers['uid'])
-            exercise_id = request.data.get('exercise_id')
-            group_id = request.data.get('group_id')
             if not exercise_id:
                 raise Exception("Please select the exercise")
             exercise = Exercise.objects.get(id=exercise_id)
