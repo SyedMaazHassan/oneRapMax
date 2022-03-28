@@ -13,6 +13,11 @@ urlpatterns = [
     path('', views.index, name="index"),
     # GET API
     # Badge api
+
+    path('search', UserSearchApi.as_view()),
+
+    path('goal', GoalApi.as_view()),
+
     path('achievement', AchievementApi.as_view()),
 
     path('user', AllUserApi.as_view()),

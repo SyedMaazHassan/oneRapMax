@@ -5,6 +5,7 @@ from api.models import *
 admin.site.register(SystemUser)
 admin.site.register(GoalCounter)
 admin.site.register(Acheivement)
+admin.site.register(Goal)
 admin.site.register(Muscle)
 admin.site.register(Exercise)
 admin.site.register(Badge)

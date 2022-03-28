@@ -14,7 +14,10 @@ from api.support import beautify_errors
 import copy
 import json
 from django.db.models import Q
+from django.db.models import Value
+from django.db.models.functions import Concat
 from random import choice
+import re
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -497,34 +500,61 @@ class ExerciseApi(APIView, ApiResponse):
         try:
             objs = get_objs(muscle_id, exercise_id)
             reps = request.data.get('reps')
-            print(reps)
-            if reps and str(reps).isdigit() and int(reps) > 0 and int(reps) < 37:
-                reps = int(reps)
-                user = SystemUser.objects.get(uid=request.headers['uid'])
-                muscel = objs['muscle']
-                exercise = objs['exercise']
+            goal = request.data.get('goal')
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            exercise = objs['exercise']
+            print(goal)
+            output = {}
 
-                entry = Entry.objects.filter(
-                    user=user, exercise=exercise).first()
-                date = datetime.now().strftime("%Y-%m-%d")
-                print(reps)
-                one_rap_max = self.calculate_onerap_max(user.weight, reps)
-                print(one_rap_max)
-                if not entry:
-                    entry = Entry(user=user, exercise=exercise)
-                entry.add_now(one_rap_max, date)
-                entry.save()
-                print(entry.values, entry.dates)
-                serialized_version = self.get_serialized_version(
-                    user, objs['muscle'], objs['exercise'])
-                self.postSuccess(serialized_version,
-                                 "New one rap max has been submitted successfully")
-            else:
+            if reps:
+                if str(reps).isdigit() and int(reps) > 0 and int(reps) < 37:
+                    reps = int(reps)
+                    muscel = objs['muscle']
+                    print(reps)
+
+                    # Update goal status
+                    all_goals_acheived = Goal.objects.filter(
+                        user=user, reps__lte=reps, is_acheived=False)
+                    all_goals_acheived.update(is_acheived=True)
+                    print(all_goals_acheived)
+
+                    entry = Entry.objects.filter(
+                        user=user, exercise=exercise).first()
+                    date = datetime.now().strftime("%Y-%m-%d")
+                    print(reps)
+                    one_rap_max = self.calculate_onerap_max(user.weight, reps)
+                    print(one_rap_max)
+                    if not entry:
+                        entry = Entry(user=user, exercise=exercise)
+                    entry.add_now(one_rap_max, date)
+                    entry.save()
+                    print(entry.values, entry.dates)
+                    serialized_version = self.get_serialized_version(
+                        user, objs['muscle'], objs['exercise'])
+                    output = serialized_version
+                else:
+                    raise Exception(
+                        "Invalid value for 'reps'. Value should be 0 > number < 37")
+
+            if goal:
+                if str(goal).isdigit() and int(goal) > 0 and int(goal) < 37:
+                    new_goal = Goal(user=user, exercise=exercise, reps=goal)
+                    new_goal.save()
+                    print(output)
+                    output['goal'] = 'Goal has been added'
+                else:
+                    raise Exception(
+                        "Invalid value for 'goal'. Value should be 0 > number < 37")
+
+            if (not (goal or reps)):
                 self.postError({
-                    'one rap max': 'Provide valid value of no. of "reps"'
+                    'exercise_form': "'Invalid value for 'reps' or 'goal'"
                 })
+            else:
+                self.postSuccess(output, "Data has been saved successfully")
+
         except Exception as e:
-            self.postError({'one rap max': str(e)})
+            self.postError({'exercise_form': str(e)})
         return Response(self.output_object)
 
     def get(self, request, muscle_id, exercise_id):
@@ -533,6 +563,25 @@ class ExerciseApi(APIView, ApiResponse):
             output = self.get_response(user, muscle_id, exercise_id)
             self.postSuccess(output['response_output'],
                              "Exercise fetched successfully")
+        except Exception as e:
+            self.postError({'exercise': str(e)})
+        return Response(self.output_object)
+
+
+class GoalApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request):
+        try:
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            all_goals = Goal.objects.filter(user=user)
+            serialized_all_goals = GoalSerializer(all_goals, many=True).data
+            self.postSuccess({
+                'goals': serialized_all_goals
+            }, 'Goals have been fetched')
         except Exception as e:
             self.postError({'exercise': str(e)})
         return Response(self.output_object)
@@ -588,6 +637,37 @@ class AllUserApi(APIView, ApiResponse):
                              "Users fetched successfully")
         except Exception as e:
             self.postError({'Users': str(e)})
+        return Response(self.output_object)
+
+
+class UserSearchApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request):
+        try:
+            uid = request.headers['uid']
+            user = SystemUser.objects.get(uid=uid)
+
+            query = request.query_params.get("query")
+            users = []
+            if query:
+                query = re.sub(' +', ' ', query)
+                all_users = SystemUser.objects.all().exclude(uid=uid)
+                all_users = all_users.annotate(full_name=Concat(
+                    'first_name', Value(' '), 'last_name'))
+                searched_users = all_users.filter(
+                    Q(full_name__icontains=query) | Q(email__icontains=query))
+                serialized_searched_users = UserMiniSerializer(
+                    searched_users, many=True).data
+                users = serialized_searched_users
+            output = {'users': users}
+            self.postSuccess(
+                output, "Search result users fetched successfully")
+        except Exception as e:
+            self.postError({'search_users': str(e)})
         return Response(self.output_object)
 
 

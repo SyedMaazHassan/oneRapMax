@@ -172,6 +172,14 @@ class UserMiniSerializer(serializers.ModelSerializer):
                   "last_name", "avatar",  "created_at"]
 
 
+class GoalSerializer(serializers.ModelSerializer):
+    exercise = ExerciseSerializer(many=False, read_only=True)
+
+    class Meta:
+        model = Goal
+        fields = ['reps', 'exercise', 'is_acheived']
+
+
 class BadgeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Badge

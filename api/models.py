@@ -85,6 +85,20 @@ class SystemUser(models.Model):
         verbose_name_plural = 'Users'
 
 
+class Goal(models.Model):
+    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    exercise = models.ForeignKey('api.Exercise', on_delete=models.CASCADE)
+    reps = models.IntegerField()
+    is_acheived = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f'{self.user.first_name} - {self.reps} -> {self.is_acheived}'
+
+    class Meta:
+        ordering = ("-reps",)
+
+
 class CommonObject(models.Model):
     name = models.CharField(max_length=255)
     image = models.ImageField(upload_to='images', null=True, blank=True)
