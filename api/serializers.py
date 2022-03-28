@@ -168,7 +168,14 @@ class ExerciseSerializer(serializers.ModelSerializer):
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = SystemUser
-        fields = ["uid", "first_name", "last_name", "avatar",  "created_at"]
+        fields = ["uid", "email", "first_name",
+                  "last_name", "avatar",  "created_at"]
+
+
+class BadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = ["name", "image", "requirement"]
 
 
 class LeaderBoardSerializer(serializers.ModelSerializer):

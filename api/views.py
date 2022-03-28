@@ -13,6 +13,7 @@ from api.authentication import RequestAuthentication, ApiResponse
 from api.support import beautify_errors
 import copy
 import json
+from django.db.models import Q
 from random import choice
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -28,24 +29,26 @@ def index(request):
     # Completely random avatar except for the hat
     # More attributes can stay fixed
 
-    for user in SystemUser.objects.all():
-        user.save()
+    # for user in SystemUser.objects.all():
+    #     GoalCounter.objects.create(user=user)
+    # user.save()
 
     # users = SystemUser.objects.all()
     # all_exercises = Exercise.objects.all()
     # numbers = list(range(105, 201))
-    # for user in users:
+    # for user in users[:10]:
     #     print("---------------------")
     #     print("USER STARTED", user)
     #     print("---------------------")
     #     for exercise in all_exercises:
     #         print(f"========= EXERCISE STARTED - {exercise} ========")
-    #         values = [106]
-    #         dates = ['2022-03-2']
-    #         max_value = 106
-    #         max_value_date = '2022-03-2'
-    #         for i in range(2, 15):
+    #         values = [106 / user.weight]
+    #         dates = ['2022-03-15']
+    #         max_value = 106 / user.weight
+    #         max_value_date = '2022-03-15'
+    #         for i in range(16, 25):
     #             val = choice(numbers)
+    #             val = val / user.weight
     #             date = f'2022-03-{i}'
     #             if val > max(values):
     #                 max_value = val
@@ -93,7 +96,10 @@ def index(request):
     #                 new_mission.save()
 
     #     print(category)
-    return render(request, "abcc.html")
+    context = {
+        'badges': Badge.objects.all()
+    }
+    return render(request, "abcc.html", context)
 
 
 class SubscriptionApi(APIView, ApiResponse):
@@ -355,7 +361,7 @@ class LeaderBoard(APIView, ApiResponse):
                 else:
                     raise Exception(
                         "Group doesn't exist or you don't have access fetch this data")
-
+            print(all_entries)
             serialized_entries = LeaderBoardSerializer(
                 all_entries, many=True, context={'user': user})
             output['leaderboard'] = serialized_entries.data
@@ -456,9 +462,11 @@ class ExerciseApi(APIView, ApiResponse):
         serialized_muscle = MuscleSerializer(muscle, many=False)
         serialized_exercise = ExerciseSerializer(exercise, many=False)
         entry = Entry.objects.filter(user=user, exercise=exercise).first()
+        max_value = None
         if entry:
             dates = json.loads(entry.dates)
             values = json.loads(entry.values)
+            max_value = self.get_reps(entry.max_value)
         else:
             dates = values = []
 
@@ -466,7 +474,8 @@ class ExerciseApi(APIView, ApiResponse):
             'exercise': serialized_exercise.data,
             'muscle': serialized_muscle.data,
             'dates': dates,
-            'values': values
+            'values': values,
+            'max_reps_value': max_value,
         }
 
     def get_response(self, user, muscle_id, exercise_id):
@@ -475,8 +484,12 @@ class ExerciseApi(APIView, ApiResponse):
             user, output['muscle'], output['exercise'])
         return output
 
+    def get_reps(self, onerapmax_value):
+        reps = 37 - (36 / onerapmax_value)
+        return int(reps)
+
     def calculate_onerap_max(self, weight, reps):
-        oneRapMax = weight * (36 / (37 - reps))
+        oneRapMax = (36 / (37 - reps))
         oneRapMax = "{:.5f}".format(oneRapMax)
         return float(oneRapMax)
 
@@ -494,7 +507,9 @@ class ExerciseApi(APIView, ApiResponse):
                 entry = Entry.objects.filter(
                     user=user, exercise=exercise).first()
                 date = datetime.now().strftime("%Y-%m-%d")
+                print(reps)
                 one_rap_max = self.calculate_onerap_max(user.weight, reps)
+                print(one_rap_max)
                 if not entry:
                     entry = Entry(user=user, exercise=exercise)
                 entry.add_now(one_rap_max, date)
@@ -576,6 +591,34 @@ class AllUserApi(APIView, ApiResponse):
         return Response(self.output_object)
 
 
+class AchievementApi(APIView, ApiResponse):
+    authentication_classes = [RequestAuthentication]
+
+    def __init__(self):
+        ApiResponse.__init__(self)
+
+    def get(self, request):
+        try:
+            user = SystemUser.objects.get(uid=request.headers['uid'])
+            all_achivements = Acheivement.objects.filter(
+                user=user).values_list("badge_id", flat=True)
+
+            got = Badge.objects.filter(Q(id__in=all_achivements))
+            to_get = Badge.objects.filter(~Q(id__in=all_achivements))
+
+            serialized_got = BadgeSerializer(got, many=True).data
+            serialized_to_get = BadgeSerializer(to_get, many=True).data
+
+            output = {
+                'got': serialized_got,
+                'to_get': serialized_to_get
+            }
+            self.postSuccess(output, "Badges fetched successfully")
+        except Exception as e:
+            self.postError({'badge': str(e)})
+        return Response(self.output_object)
+
+
 class UserApi(APIView, ApiResponse):
     authentication_classes = [RequestAuthentication]
 
@@ -590,6 +633,7 @@ class UserApi(APIView, ApiResponse):
             if serializer.is_valid():
                 serializer.save()
                 user = SystemUser.objects.get(uid=uid)
+                GoalCounter.objects.create(user=user)
                 self.postSuccess({'user': serializer.data},
                                  "User added successfully")
             else:

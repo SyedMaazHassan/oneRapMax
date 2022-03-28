@@ -12,6 +12,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('', views.index, name="index"),
     # GET API
+    # Badge api
+    path('achievement', AchievementApi.as_view()),
 
     path('user', AllUserApi.as_view()),
     path('user/<uid>', UserApi.as_view()),

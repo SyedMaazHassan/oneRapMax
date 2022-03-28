@@ -33,7 +33,7 @@ class ApiResponse:
 class RequestAuthentication(BaseAuthentication, ApiResponse):
     def __init__(self):
         self.user_auth_list = ['ExerciseApi', 'MuscleApi', 'GroupApi', 'AllUserApi',
-                               'MissionApi', 'SubscriptionApi', 'PaymentApi']
+                               'MissionApi', 'SubscriptionApi', 'PaymentApi', 'AchievementApi']
         ApiResponse.__init__(self)
 
     def authenticateApiKey(self, request):

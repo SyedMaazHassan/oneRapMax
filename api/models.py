@@ -77,6 +77,7 @@ class SystemUser(models.Model):
 
         if self.height and self.weight and self.gender:
             self.is_profile_completed = True
+
         super(SystemUser, self).save(*args, **kwargs)
 
     class Meta:
@@ -94,6 +95,54 @@ class CommonObject(models.Model):
 
     class Meta:
         abstract = True
+
+
+class GoalCounter(models.Model):
+    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    records_broke = models.IntegerField(default=0)
+
+    def increment(self):
+        self.records_broke += 1
+        self.save()
+
+    def reset(self):
+        self.records_broke = 0
+        self.save()
+
+    def save(self, *args, **kwargs):
+        if self.records_broke != 0:
+            relavent_badge = Badge.objects.filter(
+                requirement=self.records_broke).first()
+            if relavent_badge:
+                acheivement = Acheivement.objects.filter(
+                    user=self.user, badge=relavent_badge).exists()
+                if not acheivement:
+                    Acheivement.objects.create(
+                        user=self.user,
+                        badge=relavent_badge
+                    )
+                    self.reset()
+
+        super(GoalCounter, self).save(*args, **kwargs)
+
+    class Meta:
+        ordering = ("-records_broke",)
+
+
+class Acheivement(models.Model):
+    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    badge = models.ForeignKey('api.Badge', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=timezone.now)
+
+
+class Badge(CommonObject):
+    requirement = models.IntegerField()
+
+    def __str__(self):
+        return f'{self.requirement}'
+
+    class Meta:
+        ordering = ("requirement",)
 
 
 class Muscle(CommonObject):
@@ -166,6 +215,14 @@ class Entry(models.Model):
         if self.values and self.dates:
             values = json.loads(self.values)
             dates = json.loads(self.dates)
+
+            if value > self.max_value:
+                goal_counter = GoalCounter.objects.filter(
+                    user=self.user).first()
+                if not goal_counter:
+                    raise Exception("Invalid request")
+                goal_counter.increment()
+
             if date in dates:
                 for i in range(len(dates)):
                     if dates[i] == date and value > values[i]:
