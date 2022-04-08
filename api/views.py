@@ -34,40 +34,42 @@ def index(request):
 
     # for user in SystemUser.objects.all():
     #     GoalCounter.objects.create(user=user)
-    # user.save()
+    #     user.save()
+
+    # import requests
 
     # users = SystemUser.objects.all()
     # all_exercises = Exercise.objects.all()
-    # numbers = list(range(105, 201))
+    # numbers = list(range(12, 36))
+    # weights = list(range(15, 45))
+    # url = 'http://127.0.0.1:8000/'
     # for user in users[:10]:
+    #     headers = {
+    #         'api-key': '0a0302b5-c298-42f1-b030-db9e08034ae2',
+    #         'uid': user.uid,
+    #         "Content-Type": "application/json; charset=utf-8"
+    #     }
     #     print("---------------------")
     #     print("USER STARTED", user)
     #     print("---------------------")
     #     for exercise in all_exercises:
+    #         url = f'http://127.0.0.1:8000/api/muscles/{exercise.muscle.id}/exercise/{exercise.id}'
+
     #         print(f"========= EXERCISE STARTED - {exercise} ========")
-    #         values = [106 / user.weight]
-    #         dates = ['2022-03-15']
-    #         max_value = 106 / user.weight
-    #         max_value_date = '2022-03-15'
-    #         for i in range(16, 25):
-    #             val = choice(numbers)
-    #             val = val / user.weight
+    #         for i in range(15, 25):
+    #             reps = choice(numbers)
+    #             weight = choice(weights)
     #             date = f'2022-03-{i}'
-    #             if val > max(values):
-    #                 max_value = val
-    #                 max_value_date = date
-    #             values.append(val)
-    #             dates.append(date)
-    #         new_entry = Entry(
-    #             values=json.dumps(values),
-    #             dates=json.dumps(dates),
-    #             user=user,
-    #             exercise=exercise,
-    #             max_value=max_value,
-    #             max_value_date=max_value_date
-    #         )
-    #         new_entry.save()
-    #         print(values, dates)
+
+    #             data = {
+    #                 'reps': reps,
+    #                 'weight': weight,
+    #                 'date': date
+    #             }
+
+    #             r = requests.post(url, headers=headers, json=data)
+    #             print(r.json())
+
     #         print("========= EXERCISE STARTED ========")
     #     print("---------------------")
     #     print("USER ENDED", user)
@@ -102,231 +104,10 @@ def index(request):
     context = {
         'badges': Badge.objects.all()
     }
+    date = datetime.now().strftime("%Y-%m-%d")
+    query = SValue.objects.filter(date=date)
+    print(query)
     return render(request, "abcc.html", context)
-
-
-class SubscriptionApi(APIView, ApiResponse):
-    authentication_classes = [RequestAuthentication, ]
-
-    def __init__(self):
-        ApiResponse.__init__(self)
-
-    def get_multiple_subscriptions(self):
-        all_subs = Subscription.objects.all()
-        serializer = SubscriptionSerializer(all_subs, many=True)
-        return {'subscriptions': serializer.data}
-
-    def get_trial(self, user_obj, subscription):
-        query = Trial.objects.filter(user=user_obj, subscription=subscription)
-        result = None
-        if query.exists():
-            trial = query[0]
-            result = TrialSerializer(trial, many=False).data
-        return result
-
-    def get_single_subscription(self, subs_id):
-        single_sub = get_object_or_404(Subscription, subs_id=subs_id)
-        return single_sub
-
-    def get(self, request, subs_id=None):
-        try:
-            user = SystemUser.objects.get(uid=request.headers['uid'])
-            if subs_id:
-                single_subscription = self.get_single_subscription(subs_id)
-                serialized_data = {}
-                print(single_subscription)
-                serialized_data['subscription'] = SubscriptionSerializer(
-                    single_subscription, many=False).data
-                serialized_data['trial'] = self.get_trial(
-                    user, single_subscription)
-            else:
-                serialized_data = self.get_multiple_subscriptions()
-
-            self.postSuccess(
-                serialized_data, "Subscriptions fetched successfully")
-        except Exception as e:
-            self.postError({'subscription': str(e)})
-        return Response(self.output_object)
-
-    def post(self, request, subs_id):
-        try:
-            user = SystemUser.objects.get(uid=request.headers['uid'])
-
-            subscription = Subscription.objects.get(subs_id=subs_id)
-            check_query = Trial.objects.filter(
-                subscription=subscription,
-                user=user
-            )
-            if check_query.exists():
-                self.postError(
-                    {'Trial': 'You have already avail the free trial for this subscription'})
-                return Response(self.output_object)
-
-            new_trial = Trial(
-                subscription=subscription,
-                user=user
-            )
-            new_trial.save()
-            user.is_trial_taken = True
-            user.save()
-            output = {
-                "trial": TrialSerializer(new_trial, many=False).data
-            }
-
-            self.postSuccess(output, "Free trial has been started!")
-        except Exception as e:
-            self.postError({'Trial': str(e)})
-        return Response(self.output_object)
-
-
-class LevelApi(APIView, ApiResponse):
-    authentication_classes = [RequestAuthentication, ]
-
-    def __init__(self):
-        ApiResponse.__init__(self)
-
-    def check_access(self, level, user_obj):
-        query = UnlockedLevel.objects.filter(
-            user=user_obj,
-            level=level
-        )
-        return query.exists()
-
-    def get(self, request, level_id=None):
-        if not level_id:
-            self.postError({'level_id': 'Level id is missing'})
-            return Response(self.output_object)
-        try:
-            single_level = Level.objects.get(level_id=level_id)
-            serializer = LevelDetailSerializer(single_level, many=False)
-            # Get logged in user
-            user_obj = SystemUser.objects.get(uid=request.headers['uid'])
-
-            if not self.check_access(single_level, user_obj):
-                self.postError({'level': 'This level is locked'})
-                return Response(self.output_object)
-
-            # Convert data into python dictionary to process
-            proper_data = json.loads(json.dumps(serializer.data))
-            # Get all unlocked missions
-            unlocked_missions = UnlockedMission.objects.filter(user=user_obj)
-
-            all_missions = proper_data['missions']
-            for mission_index in range(len(all_missions)):
-                mission = all_missions[mission_index]
-
-                mission['is_locked'] = True
-                mission['is_completed'] = False
-                query_test = unlocked_missions.filter(
-                    mission_id=mission['mission_id'])
-                if query_test.exists():
-                    mission['is_locked'] = False
-                    if query_test[0].is_completed:
-                        mission['is_completed'] = True
-
-            self.postSuccess({'level': proper_data},
-                             "Level fetched successfully")
-
-        except Exception as e:
-            self.postError({'level': str(e)})
-        return Response(self.output_object)
-
-
-class CategoryApi(APIView, ApiResponse):
-    authentication_classes = [RequestAuthentication, ]
-
-    def __init__(self):
-        ApiResponse.__init__(self)
-
-    def get_multiple_categories(self):
-        all_categories = Category.objects.all()
-        serializer = CategoryShortSerializer(all_categories, many=True)
-        return {'categories': serializer.data}
-
-    def get_courses(self, category, user):
-        related_courses = self.get_related_courses(user, category)
-        courses = CourseSerializer(related_courses, many=True).data
-        courses = json.loads(json.dumps(courses))
-        return courses
-
-    def get_completed_courses(self, category, user):
-        all_completed_courses = CompletedCourse.objects.filter(
-            user=user, course__category=category).values_list('course_id', flat=True)
-        return list(all_completed_courses)
-
-    def apply_ticks_on_courses(self, course, completed_courses):
-        if course['course_id'] in completed_courses:
-            is_completed = True
-        else:
-            is_completed = False
-        course['is_completed'] = is_completed
-
-    def get_unlocked_levels(self, user):
-        unlocked_levels = UnlockedLevel.objects.filter(
-            user=user).values_list('level_id', 'is_completed')
-        return unlocked_levels
-
-    def apply_ticks_on_levels(self, level, unlocked_levels):
-        level['is_locked'] = True
-        level['is_completed'] = False
-        single_unlocked_level = unlocked_levels.filter(
-            level_id=level['level_id']).first()
-        if single_unlocked_level:
-            level['is_locked'] = False
-            level['is_completed'] = True if single_unlocked_level[1] else False
-
-    def serialize_where_you_left(self, user, category):
-        last_visited_mission = self.add_where_you_left_mission(user, category)
-        # data = MissionShortSerializer(last_visited_mission, many = False).data
-        return last_visited_mission
-
-    def get_single_category(self, cat_id, user_obj):
-        single_cat = get_object_or_404(Category, cat_id=cat_id)
-        serializer = CategoryDetailedSerializer(single_cat, many=False)
-        proper_data = json.loads(json.dumps(serializer.data))
-        all_courses = self.get_courses(single_cat, user_obj)
-        all_completed_courses = self.get_completed_courses(
-            single_cat, user_obj)
-        all_unlocked_levels = self.get_unlocked_levels(user_obj)
-
-        for course in all_courses:
-            self.apply_ticks_on_courses(course, all_completed_courses)
-            all_levels = course['levels']
-            for level in all_levels:
-                self.apply_ticks_on_levels(level, all_unlocked_levels)
-        proper_data['courses'] = all_courses
-
-        if len(all_courses) > 0:
-            if all_courses == all_completed_courses:
-                proper_data['where_you_left'] = {
-                    'mission_id': None,
-                    'category_name': single_cat.name,
-                    'mission_name': 'All courses completed!'
-                }
-            else:
-                proper_data['where_you_left'] = self.add_where_you_left_mission(
-                    user_obj, single_cat)
-        else:
-            proper_data['where_you_left'] = {
-                'mission_id': None,
-                'category_name': single_cat.name,
-                'mission_name': 'No courses present!'
-            }
-        return {'category': proper_data}
-
-    def get(self, request, cat_id=None):
-        try:
-            user_object = SystemUser.objects.get(uid=request.headers['uid'])
-            self.add_payment_info(user_object)
-            if cat_id:
-                serialized_data = self.get_single_category(cat_id, user_object)
-            else:
-                serialized_data = self.get_multiple_categories()
-            self.postSuccess(
-                serialized_data, "Category(s) fetched successfully")
-        except Exception as e:
-            self.postError({'cat': str(e)})
-        return Response(self.output_object)
 
 
 def get_objs(muscle_id, exercise_id):
@@ -467,9 +248,10 @@ class ExerciseApi(APIView, ApiResponse):
         entry = Entry.objects.filter(user=user, exercise=exercise).first()
         max_value = None
         if entry:
-            dates = json.loads(entry.dates)
-            values = json.loads(entry.values)
-            max_value = self.get_reps(entry.max_value)
+            max_value = entry.max_value
+            svalues = SValue.objects.filter(entry=entry)
+            dates = list(svalues.values_list('date', flat=True))
+            values = list(svalues.values_list('one_rep_value', flat=True))
         else:
             dates = values = []
 
@@ -492,43 +274,48 @@ class ExerciseApi(APIView, ApiResponse):
         return int(reps)
 
     def calculate_onerap_max(self, weight, reps):
-        oneRapMax = (36 / (37 - reps))
-        oneRapMax = "{:.5f}".format(oneRapMax)
-        return float(oneRapMax)
+        oneRapMax = weight * (36 / (37 - reps))
+        # oneRapMax = "{:.5f}".format(oneRapMax)
+        return round(oneRapMax, 3)
+        # return float(oneRapMax)
 
     def post(self, request, muscle_id, exercise_id):
         try:
             objs = get_objs(muscle_id, exercise_id)
             reps = request.data.get('reps')
             goal = request.data.get('goal')
+            weight = request.data.get('weight')
+            date = request.data.get('date')
             user = SystemUser.objects.get(uid=request.headers['uid'])
             exercise = objs['exercise']
             print(goal)
             output = {}
 
-            if reps:
-                if str(reps).isdigit() and int(reps) > 0 and int(reps) < 37:
+            if reps and weight:
+                if str(reps).isdigit() and int(reps) > 0 and int(reps) < 37 and str(weight).isdigit() and int(weight) > 0:
                     reps = int(reps)
+                    weight = int(weight)
                     muscel = objs['muscle']
-                    print(reps)
 
                     # Update goal status
                     all_goals_acheived = Goal.objects.filter(
-                        user=user, reps__lte=reps, is_acheived=False)
+                        user=user, weight__lte=weight, is_acheived=False)
                     all_goals_acheived.update(is_acheived=True)
                     print(all_goals_acheived)
 
                     entry = Entry.objects.filter(
                         user=user, exercise=exercise).first()
-                    date = datetime.now().strftime("%Y-%m-%d")
+                    # date = datetime.now().strftime("%Y-%m-%d")
+
                     print(reps)
-                    one_rap_max = self.calculate_onerap_max(user.weight, reps)
+                    one_rap_max = self.calculate_onerap_max(weight, reps)
                     print(one_rap_max)
                     if not entry:
                         entry = Entry(user=user, exercise=exercise)
-                    entry.add_now(one_rap_max, date)
+                        entry.save()
+                    entry.add_now(reps, weight, one_rap_max, date)
                     entry.save()
-                    print(entry.values, entry.dates)
+
                     serialized_version = self.get_serialized_version(
                         user, objs['muscle'], objs['exercise'])
                     output = serialized_version
@@ -537,8 +324,8 @@ class ExerciseApi(APIView, ApiResponse):
                         "Invalid value for 'reps'. Value should be 0 > number < 37")
 
             if goal:
-                if str(goal).isdigit() and int(goal) > 0 and int(goal) < 37:
-                    new_goal = Goal(user=user, exercise=exercise, reps=goal)
+                if str(goal).isdigit() and int(goal) > 0:
+                    new_goal = Goal(user=user, exercise=exercise, weight=goal)
                     new_goal.save()
                     print(output)
                     output['goal'] = 'Goal has been added'

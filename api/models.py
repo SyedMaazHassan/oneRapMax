@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from django.utils import timezone
 from django.contrib.auth.models import User, auth
 import uuid
@@ -88,7 +88,7 @@ class SystemUser(models.Model):
 class Goal(models.Model):
     user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
     exercise = models.ForeignKey('api.Exercise', on_delete=models.CASCADE)
-    reps = models.IntegerField()
+    weight = models.FloatField()
     is_acheived = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
 
@@ -96,7 +96,7 @@ class Goal(models.Model):
         return f'{self.user.first_name} - {self.reps} -> {self.is_acheived}'
 
     class Meta:
-        ordering = ("-reps",)
+        ordering = ("-weight",)
 
 
 class CommonObject(models.Model):
@@ -214,9 +214,15 @@ class Group(models.Model):
         return reverse("Group_detail", kwargs={"pk": self.pk})
 
 
+class SValue(models.Model):
+    reps = models.IntegerField()
+    dumble_weight = models.FloatField()
+    one_rep_value = models.FloatField(null=True, blank=True)
+    date = models.DateField(default=date.today)
+    entry = models.ForeignKey('Entry', on_delete=models.CASCADE)
+
+
 class Entry(models.Model):
-    values = models.TextField()
-    dates = models.TextField()
     user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
     max_value = models.FloatField(default=0)
@@ -225,32 +231,49 @@ class Entry(models.Model):
     def __str__(self):
         return f'{self.exercise} - {self.user} - ({self.max_value}, {self.max_value_date})'
 
-    def add_now(self, value, date):
-        if self.values and self.dates:
-            values = json.loads(self.values)
-            dates = json.loads(self.dates)
+    def add_now(self, reps, dumble_weight, one_rep_value, date):
+        svalues = SValue.objects.filter(entry=self)
+        rank_value = round(one_rep_value / self.user.weight, 3)
 
-            if value > self.max_value:
+        if svalues.exists():
+            svalue = svalues.filter(date=date).first()
+
+            if svalue:
+                print('Already exsits, to replace')
+                if one_rep_value > svalue.one_rep_value:
+                    svalue.reps = reps
+                    svalue.dumble_weight = dumble_weight
+                    svalue.one_rep_value = one_rep_value
+                    svalue.save()
+            else:
+                SValue.objects.create(
+                    reps=reps,
+                    dumble_weight=dumble_weight,
+                    one_rep_value=one_rep_value,
+                    entry=self,
+                    date=date
+                )
+
+            if rank_value > self.max_value:
+                # updating max value
+                self.max_value = rank_value
+                self.max_value_date = date
+
                 goal_counter = GoalCounter.objects.filter(
                     user=self.user).first()
                 if not goal_counter:
                     raise Exception("Invalid request")
                 goal_counter.increment()
 
-            if date in dates:
-                for i in range(len(dates)):
-                    if dates[i] == date and value > values[i]:
-                        values[i] = value
-            else:
-                values.append(value)
-                dates.append(date)
-            self.set_max_value(values, dates)
-            self.values = json.dumps(values)
-            self.dates = json.dumps(dates)
         else:
-            self.values = json.dumps([value])
-            self.dates = json.dumps([date])
-            self.max_value = value
+            SValue.objects.create(
+                reps=reps,
+                dumble_weight=dumble_weight,
+                one_rep_value=one_rep_value,
+                entry=self,
+                date=date
+            )
+            self.max_value = rank_value
             self.max_value_date = date
 
     def set_max_value(self, values, dates):
