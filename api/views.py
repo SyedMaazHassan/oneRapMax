@@ -260,7 +260,7 @@ class ExerciseApi(APIView, ApiResponse):
             'muscle': serialized_muscle.data,
             'dates': dates,
             'values': values,
-            'max_reps_value': max_value * user.weight,
+            'max_reps_value': round(max_value * user.weight, 1) if max_value else 0,
         }
 
     def get_response(self, user, muscle_id, exercise_id):
@@ -305,7 +305,8 @@ class ExerciseApi(APIView, ApiResponse):
 
                     entry = Entry.objects.filter(
                         user=user, exercise=exercise).first()
-                    # date = datetime.now().strftime("%Y-%m-%d")
+
+                    date = datetime.now().strftime("%Y-%m-%d")
 
                     print(reps)
                     one_rap_max = self.calculate_onerap_max(weight, reps)
@@ -342,6 +343,7 @@ class ExerciseApi(APIView, ApiResponse):
 
         except Exception as e:
             self.postError({'exercise_form': str(e)})
+
         return Response(self.output_object)
 
     def get(self, request, muscle_id, exercise_id):
