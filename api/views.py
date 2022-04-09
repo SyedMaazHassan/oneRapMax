@@ -260,7 +260,7 @@ class ExerciseApi(APIView, ApiResponse):
             'muscle': serialized_muscle.data,
             'dates': dates,
             'values': values,
-            'max_reps_value': max_value,
+            'max_reps_value': max_value * user.weight,
         }
 
     def get_response(self, user, muscle_id, exercise_id):
