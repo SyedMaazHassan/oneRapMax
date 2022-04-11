@@ -350,8 +350,10 @@ class ExerciseApi(APIView, ApiResponse):
         try:
             user = SystemUser.objects.get(uid=request.headers['uid'])
             output = self.get_response(user, muscle_id, exercise_id)
-            output['response_output']['recent_goal'] = Goal.objects.filter(
+            recent_goal = Goal.objects.filter(
                 user=user).order_by("-id").first()
+            recent_goal = recent_goal.weight if recent_goal else None
+            output['response_output']['recent_goal'] = recent_goal
             self.postSuccess(output['response_output'],
                              "Exercise fetched successfully")
         except Exception as e:
