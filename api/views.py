@@ -255,12 +255,17 @@ class ExerciseApi(APIView, ApiResponse):
         else:
             dates = values = []
 
+        recent_goal = Goal.objects.filter(
+            user=user, exercise=exercise).order_by("-id").first()
+        recent_goal = recent_goal.weight if recent_goal else None
+
         return {
             'exercise': serialized_exercise.data,
             'muscle': serialized_muscle.data,
             'dates': dates,
             'values': values,
             'max_reps_value': round(max_value * user.weight, 1) if max_value else 0,
+            'recent_goal': recent_goal
         }
 
     def get_response(self, user, muscle_id, exercise_id):
@@ -350,10 +355,6 @@ class ExerciseApi(APIView, ApiResponse):
         try:
             user = SystemUser.objects.get(uid=request.headers['uid'])
             output = self.get_response(user, muscle_id, exercise_id)
-            recent_goal = Goal.objects.filter(
-                user=user).order_by("-id").first()
-            recent_goal = recent_goal.weight if recent_goal else None
-            output['response_output']['recent_goal'] = recent_goal
             self.postSuccess(output['response_output'],
                              "Exercise fetched successfully")
         except Exception as e:
